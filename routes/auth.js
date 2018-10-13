@@ -29,7 +29,7 @@ router.post('/login', function (req, res, next) {
         message: 'OK'
     };
     pool.query(queryString, function (error, results, fields) {
-        if (results.length == 0) {
+        if (results.length === 0) {
             responseJSON["status"] = 500;
             responseJSON["message"] = "User Does Not Exist";
             res.send(responseJSON);
@@ -73,44 +73,61 @@ router.post('/signup', function (req, res, next) {
         status: 200,
         message: 'OK'
     };
-    console.log(user, password);
-    argon2.hash(password, {
-        type: argon2.argon2i
-    }).then(hash => {
-        const queryString = util.format("INSERT INTO users (username, name, password, email, role, verifytoken) VALUES ('%s', '%s', '%s', '%s', '%s')", username, name, hash, email, 2, verifyToken);
-        pool.query(queryString, function (error, results, fields) {
-            if (error) {
-                responseJSON.status = 500;
-                responseJSON.message = "Internal Error";
-                res.send(responseJSON);
-            } else {
-                fs.readFile('../emailTemplates/emailVerifyTemplate.hbs', 'UTF-8', function (err, contents) {
-                    if (err) {
+    console.log(username, password);
+    const dupeQuery = util.format("SELECT id FROM users WHERE email='%s' OR username='%s'", email, username);
+    pool.query(dupeQuery, function (error, results, fields) {
+        if (error) {
+            responseJSON.status = 500;
+            responseJSON.message = "MySQL Error";
+        } else {
+
+            argon2.hash(password, {
+                type: argon2.argon2i
+            }).then(hash => {
+                const queryString = util.format("INSERT INTO users (username, name, password, email, role, verifytoken) VALUES ('%s', '%s', '%s', '%s', '%d', '%s');", username, name, hash, email, 2, verifyToken);
+                pool.query(queryString, function (error, results, fields) {
+                    if (error) {
                         responseJSON.status = 500;
-                        responseJSON.message = "File I/O Error";
-                        res.send(responseJSON)
-                    } else {
-                        let htmlContent = hb.compile(contents);
-                        let data = {
-                            verifyURL: util.format("https://register@%s/auth/verify/%s", process.env.DOMAIN, verifyToken)
-                        };
-                        const result = htmlContent(data);
-                        const msg = {
-                            to: email,
-                            from: util.format("register@%s", process.env.DOMAIN),
-                            subject: "Please Verify Your Email",
-                            text: "Your email client does not support HTML",
-                            html: result
-                        };
-                        sgMail.send(msg);
+                        responseJSON.message = "Internal Error";
+                        console.log(error);
                         res.send(responseJSON);
+                    } else {
+                        if (results.length === 0) {
+                            fs.readFile('./emailTemplates/emailVerifyTemplate.hbs', 'UTF-8', function (err, contents) {
+                                if (err) {
+                                    responseJSON.status = 500;
+                                    responseJSON.message = "File I/O Error";
+                                    res.send(responseJSON)
+                                } else {
+                                    let htmlContent = hb.compile(contents);
+                                    let data = {
+                                        verifyURL: util.format("https://register@%s/auth/verify/%s", process.env.DOMAIN, verifyToken)
+                                    };
+                                    const result = htmlContent(data);
+                                    const msg = {
+                                        to: email,
+                                        from: util.format("register@%s", process.env.DOMAIN),
+                                        subject: "Please Verify Your Email",
+                                        text: "Your email client does not support HTML",
+                                        html: result
+                                    };
+                                    sgMail.send(msg).then(() => console.log("SG Mail Sent"))
+                                        .catch(error => console.log(error.toString()));
+                                    res.send(responseJSON);
+                                }
+                            });
+                        } else {
+                            responseJSON.status = 403;
+                            responseJSON.message = "User Exists!";
+                            res.send(responseJSON);
+                        }
                     }
-                });
-            }
-        })
-    }).catch(err => {
-        res.sendStatus(500);
-        console.log(err);
+                })
+            }).catch(err => {
+                res.sendStatus(500);
+                console.log(err);
+            });
+        }
     });
 });
 
