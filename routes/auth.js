@@ -11,7 +11,7 @@ let UserController = require('../controllers/UserController')
 
 let router = express.Router();
 
-UserController.createUser("test","Test User",0,"test@coderach.ca",-1,"123abc","urmom",0,true, function(err,message){
+UserController.createUser("jamesxu","James Xu",0,"xujames007@gmail.com",-1,"123abc","urmom",0,true, function(err,message){
 	if(err){
 		console.log(err);
 	}
@@ -130,7 +130,7 @@ router.post('/signup', function (req, res, next) {
                                 } else {
                                     let htmlContent = hb.compile(contents);
                                     let data = {
-                                        verifyURL: util.format("https://register@%s/auth/verify/%s", process.env.DOMAIN, verifyToken)
+                                        verifyURL: util.format("https://register.%s/auth/verify/%s", process.env.DOMAIN, verifyToken)
                                     };
                                     const result = htmlContent(data);
                                     const msg = {
