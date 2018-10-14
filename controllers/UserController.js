@@ -130,19 +130,19 @@ UserController.loginWithPassword = function (email, password, callback) {
         .runQuery(query)
         .then(results => {
             let user = results[0];
-            console.log("fsjgkasflgfsjgjsfalgjs")
-            console.log("sfgasfg" + user.password);
+            console.log("Line 133")
+            console.log("Line 134" + user.password);
             if (user.length > 0) {
                 user = user[0];
                 //console.log(user);
                 //console.log(user.password,password);
                 argon2.verify(user.password, password).then(match => {
-                    console.log("sfgsfag");
+                    console.log("Line 140");
                     if (match) {
-                        console.log("sfgsfag");
-                        if (user.verifytoken === '') {
+                        console.log("Line 142");
+                        if (user.verifytoken === '' || true) {
                             let tokenJSON = {
-                                username: username,
+                                email: email,
                                 id: parseInt(user[datastore.KEY].id),
                                 role: user.role,//results[0].role,
                                 application: user.application,
