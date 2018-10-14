@@ -7,8 +7,18 @@ let uuidv1 = require('uuid/v1');
 let sgMail = require('@sendgrid/mail');
 let hb = require('handlebars');
 let fs = require('fs');
+let UserController = require('../controllers/UserController')
 
 let router = express.Router();
+
+UserController.createUser("test","Test User",0,"test@coderach.ca",-1,"123abc","urmom",0,true, function(err,message){
+	if(err){
+		console.log(err);
+	}
+	else{
+		console.log(message);
+	}
+});
 
 let pool = mysql.createPool({
     connectionLimit: 10,
@@ -18,8 +28,27 @@ let pool = mysql.createPool({
     database: process.env.DB_NAME
 });
 sgMail.setApiKey(process.env.SG_API);
+UserController.findByEmail("davidhui@davesoftllc.com", function(err,user){
+	if(err){
+		console.log(err);
+	}
+	else{
+		console.log(user);
+	}
+});
+UserController.loginWithPassword("davidhui@davesoftllc.com","123abc", function(err,message){
+	if(err){
+		console.log(err);
+	}
+	else{
+		console.log("done!")
+		console.log(message);
+	}
+});
+
 
 router.post('/login', function (req, res, next) {
+	
     let username = req.body.username;
     let password = req.body.password;
     let queryString = util.format("SELECT * FROM users WHERE username='%s';", username);
