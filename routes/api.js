@@ -24,7 +24,7 @@ router.post('/viewAllApplications', function (req, res, next) {
         content: null
     };
     jwt.verify(req.body.token, process.env.JWT_SECRET, function (err, decoded) {
-        if (role < 2) {
+        if (decoded.role < 2) {
             pool.query("SELECT * FROM applications", function (error, results, fields) {
                 if (!error) {
                     responseJSON.content = results;

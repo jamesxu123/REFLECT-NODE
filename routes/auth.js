@@ -40,7 +40,7 @@ router.post('/login', function (req, res, next) {
                         let tokenJSON = {
                             username: username,
                             id: parseInt(results[0].id),
-                            role: results[0].role,
+                            role: 0,//results[0].role,
                             application: results[0].application,
                         };
                         let token = jwt.sign(tokenJSON, process.env.JWT_SECRET, {
