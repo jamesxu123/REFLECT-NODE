@@ -1,151 +1,64 @@
-const Datastore = require('@google-cloud/datastore');
 const jwt = require('jsonwebtoken');
 const argon2 = require('argon2');
-let datastore = new Datastore();
+const User = require('../models/User');
 
 let UserController = {};
 
-UserController.createUser = function (username, name, role, email, application, password, verifytoken, lastChanged, confirmed, callback) {
-    UserController.findByEmail(email, function (err, user) {
-        if (err) {
-            return callback(err);
-        }
-        else if (user.length > 0) {
-            return callback({error: "The email specified is already associated with an account"});
-        }
-        else {
-            UserController.findByUsername(username, function (err, user) {
-                if (err) {
-                    return callback(err, message);
-                }
-                else if (user.length > 0) {
-                    return callback({error: "The username specified is already associated with an account"});
-                }
-                else {
-                    const userKey = datastore.key('user');
-                    const entity = {
-                        key: userKey,
-                        data: [
-                            {
-                                name: 'username',
-                                value: username,
-                            },
-                            {
-                                name: 'name',
-                                value: name,
-                            },
-                            {
-                                name: 'role',
-                                value: role,
-                            },
-                            {
-                                name: 'email',
-                                value: email,
-                            },
-                            {
-                                name: 'application',
-                                value: application,
-                            },
-                            {
-                                name: 'password',
-                                value: password,
-                                excludeFromIndexes: true,
-                            },
-                            {
-                                name: 'verifytoken',
-                                value: verifytoken,
-                                excludeFromIndexes: true,
-                            },
-                            {
-                                name: 'lastChanged',
-                                value: lastChanged,
-                                excludeFromIndexes: true,
-                            },
-                            {
-                                name: 'confirmed',
-                                value: confirmed,
-                            },
-                        ],
-                    };
+UserController.createUser = function (username, firstname, lastname, role, email, password, callback) {
+    console.log("I'm getting called!");
 
-                    datastore
-                        .save(entity)
-                        .then(() => {
-                            return callback(null, "Success");
-                        })
-                        .catch(err => {
-                            return callback(err);
-                        });
-                }
-            });
+    User.getByEmail(email, function(err, user){
+
+        if(!err || user){
+            return callback({message:"A user with the specified email already exists."});
         }
+        else{
+            User.getByUsername(username, function(err, user){
+                if(!err || user){
+                    return callback({message:"A user with the specified username already exists."});
+                }
+                else{
+
+                    User.create({
+                            email: email,
+                            firstName: firstname,
+                            lastName: lastname,
+                            password: password,
+                            role: role,
+                            passwordLastUpdated: Date.now(),
+                            lastUpdated: Date.now()
+
+                        }, function(err, user){
+                            if (err || !user) {
+                                console.log(err);
+                                return callback(err);
+                            }
+                            else{
+                                //user created!
+                                let verifyToken = jwt.sign({id: user.id}, process.env.JWT_SECRET, {
+                                    expiresIn: Date.now() + 86400
+                                });
+                                return callback(null,{verifyToken:verifyToken});
+                            }
+                        }
+                    );
+                }
+            })
+        }
+
     });
 
 };
 
-UserController.findByEmail = function (email, callback) {
-    const query = datastore.createQuery('user').filter('email', email);
-
-    datastore
-        .runQuery(query)
-        .then(results => {
-            const user = results[0];
-            return callback(null, user);
-        })
-        .catch(err => {
-            return callback(err);
-        });
-};
-
-UserController.findByUsername = function (username, callback) {
-    const query = datastore.createQuery('user').filter('username', username);
-
-    datastore
-        .runQuery(query)
-        .then(results => {
-            const user = results[0];
-            return callback(null, user);
-        })
-        .catch(err => {
-            return callback(err);
-        });
-};
-
-UserController.findByID = function (id, callback) {
-    const query = datastore.createQuery('user').filter('__key__', datastore.key(['user', id]));
-
-    datastore
-        .runQuery(query)
-        .then(results => {
-            const user = results[0];
-            return callback(null, user);
-        })
-        .catch(err => {
-            return callback(err);
-        });
-};
-
-UserController.findByToken = function (token, callback) {
-    const query = datastore.createQuery('user').filter('verifytoken', token);
-
-    datastore
-        .runQuery(query)
-        .then(results => {
-            const user = results[0];
-            return callback(null, user);
-        })
-        .catch(err => {
-            return callback(err, null)
-        })
-}
-
 UserController.updateUser = function (id, field, updatedContent, callback) {
 
-}
+};
 
 UserController.loginWithPassword = function (email, password, callback) {
-    const query = datastore.createQuery('user').filter('email', email);
 
+    /*
+    const query = datastore.createQuery('user').filter('email', email);
+    console.log("start!");
     datastore
         .runQuery(query)
         .then(results => {
@@ -154,7 +67,7 @@ UserController.loginWithPassword = function (email, password, callback) {
             console.log("Line 134" + user.password);
             if (user.length > 0) {
                 user = user[0];
-                //console.log(user);
+                console.log(user);
                 //console.log(user.password,password);
                 argon2.verify(user.password, password).then(match => {
                     console.log("Line 140");
@@ -189,7 +102,34 @@ UserController.loginWithPassword = function (email, password, callback) {
         })
         .catch(err => {
             return callback(err);
-        });
+        });*/
+};
+
+UserController.verifyUser = function(token, callback){
+    console.log("herr");
+    jwt.verify(token, process.env.JWT_SECRET, function(err,decoded){
+        if(err){
+            return callback(err);
+        }
+        else{
+            console.log('sfgafsgsfgsf');
+            console.log(decoded.id);
+            console.log(decoded.exp <= Date.now());
+            if(decoded.id && decoded.exp >= Date.now()){
+                console.log("urmom");
+                User.findOneAndUpdate({_id:decoded.id},{$set:{'status.active':true}},function(err){
+                    console.log("sfgag");
+                    if(err){
+                        return callback(err);
+                    }
+                    return callback(null,{message:"Success"});
+                });
+            }
+            else{
+                return callback({error: "The given token is invalid or has expired."});
+            }
+        }
+    });
 };
 
 module.exports = UserController;

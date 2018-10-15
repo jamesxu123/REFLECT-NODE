@@ -10,6 +10,10 @@ const usersRouter = require('./routes/users');
 const apiRouter = require('./routes/api');
 const authRouter = require('./routes/auth');
 
+const mongoose = require('mongoose');
+mongoose.connect(process.env.DB_STRING);
+mongoose.set('useFindAndModify', false);
+
 let app = express();
 
 // view engine setup
