@@ -124,27 +124,35 @@ router.get('/verify/:verifyToken', function (req, res, next) {
         message: 'OK'
     };
     const verifyToken = req.params.verifyToken;
-    const queryString = util.format("SELECT id FROM users WHERE verifytoken='%s'", verifyToken);
-    pool.query(queryString, function (error, results, fields) {
-        if (error) {
+    UserController.findByToken(verifyToken, function (err, user) {
+        if (err) {
+            responseJSON.message = err;
             responseJSON.status = 500;
-            responseJSON.message = "Invalid Token";
-            res.send(responseJSON);
         } else {
-            if (results.length > 0) {
-                const updateQueryString = util.format("UPDATE users set verifytoken='' WHERE verifytoken = '%s'", verifyToken);
-                pool.query(updateQueryString, function (error, results, fields) {
-                    if (error) {
-                        responseJSON.status = 500;
-                        responseJSON.message = "MySQL Error";
-                        res.send(responseJSON);
-                    } else {
-                        res.send(responseJSON);
-                    }
-                })
-            }
+
         }
     })
+    // const queryString = util.format("SELECT id FROM users WHERE verifytoken='%s'", verifyToken);
+    // pool.query(queryString, function (error, results, fields) {
+    //     if (error) {
+    //         responseJSON.status = 500;
+    //         responseJSON.message = "Invalid Token";
+    //         res.send(responseJSON);
+    //     } else {
+    //         if (results.length > 0) {
+    //             const updateQueryString = util.format("UPDATE users set verifytoken='' WHERE verifytoken = '%s'", verifyToken);
+    //             pool.query(updateQueryString, function (error, results, fields) {
+    //                 if (error) {
+    //                     responseJSON.status = 500;
+    //                     responseJSON.message = "MySQL Error";
+    //                     res.send(responseJSON);
+    //                 } else {
+    //                     res.send(responseJSON);
+    //                 }
+    //             })
+    //         }
+    //     }
+    // })
 });
 
 module.exports = router;

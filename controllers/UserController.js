@@ -123,6 +123,24 @@ UserController.findByID = function (id, callback) {
         });
 }
 
+UserController.findByToken = function (token, callback) {
+    const query = datastore.createQuery('user').filter('verifytoken', token);
+
+    datastore
+        .runQuery(query)
+        .then(results => {
+            const user = results[0];
+            return callback(null, user);
+        })
+        .catch(err => {
+            return callback(err, null)
+        })
+}
+
+UserController.updateUser = function (id, field, updatedContent, callback) {
+
+}
+
 UserController.loginWithPassword = function (email, password, callback) {
     const query = datastore.createQuery('user').filter('email', email);
 
