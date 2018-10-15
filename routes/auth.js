@@ -1,13 +1,13 @@
 const express = require('express');
 const argon2 = require('argon2');
-const mysql = require('mysql');
 const jwt = require('jsonwebtoken');
 const util = require('util');
+const mysql = require('mysql');
 const uuidv1 = require('uuid/v1');
 const sgMail = require('@sendgrid/mail');
 const hb = require('handlebars');
 const fs = require('fs');
-const UserController = require('../controllers/UserController')
+const UserController = require('../controllers/UserController');
 
 let router = express.Router();
 
