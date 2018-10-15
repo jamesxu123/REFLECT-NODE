@@ -1,7 +1,7 @@
-let express = require('express');
-let mysql = require('mysql');
-let jwt = require('jsonwebtoken');
-let util = require('util');
+const express = require('express');
+const mysql = require('mysql');
+const jwt = require('jsonwebtoken');
+const util = require('util');
 
 let router = express.Router();
 

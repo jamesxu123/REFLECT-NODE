@@ -54,10 +54,12 @@ UserController.createUser = function (username, name, role, email, application, 
                             {
                                 name: 'verifytoken',
                                 value: verifytoken,
+                                excludeFromIndexes: true,
                             },
                             {
                                 name: 'lastChanged',
                                 value: lastChanged,
+                                excludeFromIndexes: true,
                             },
                             {
                                 name: 'confirmed',
@@ -79,7 +81,7 @@ UserController.createUser = function (username, name, role, email, application, 
         }
     });
 
-}
+};
 
 UserController.findByEmail = function (email, callback) {
     const query = datastore.createQuery('user').filter('email', email);
@@ -93,7 +95,7 @@ UserController.findByEmail = function (email, callback) {
         .catch(err => {
             return callback(err);
         });
-}
+};
 
 UserController.findByUsername = function (username, callback) {
     const query = datastore.createQuery('user').filter('username', username);
@@ -107,7 +109,7 @@ UserController.findByUsername = function (username, callback) {
         .catch(err => {
             return callback(err);
         });
-}
+};
 
 UserController.findByID = function (id, callback) {
     const query = datastore.createQuery('user').filter('__key__', datastore.key(['user', id]));
@@ -121,7 +123,7 @@ UserController.findByID = function (id, callback) {
         .catch(err => {
             return callback(err);
         });
-}
+};
 
 UserController.findByToken = function (token, callback) {
     const query = datastore.createQuery('user').filter('verifytoken', token);
@@ -148,7 +150,7 @@ UserController.loginWithPassword = function (email, password, callback) {
         .runQuery(query)
         .then(results => {
             let user = results[0];
-            console.log("Line 133")
+            console.log("Line 133");
             console.log("Line 134" + user.password);
             if (user.length > 0) {
                 user = user[0];
@@ -158,7 +160,7 @@ UserController.loginWithPassword = function (email, password, callback) {
                     console.log("Line 140");
                     if (match) {
                         console.log("Line 142");
-                        if (user.verifytoken === '' || true) {
+                        if (user.verifytoken === '' || !user.verifytoken) {
                             let tokenJSON = {
                                 email: email,
                                 id: parseInt(user[datastore.KEY].id),
@@ -169,24 +171,25 @@ UserController.loginWithPassword = function (email, password, callback) {
                                 expiresIn: 60 * 60
                             });
                             return callback(null, {token: tokenJSON});
+                            //return callback(null, {token: token});
                         } else {
                             return callback({error: "Please verify your account."});
                         }
 
                     } else {
-                        return callback({error: "Please verify your account."});
+                        return callback({error: "The username or password is incorrect."});
                     }
                 })
             }
             else {
                 console.log(user);
-                return callback({error: "The given email does not have an account associated with it."});
+                return callback({error: "The username or password is incorrect."});
             }
 
         })
         .catch(err => {
             return callback(err);
         });
-}
+};
 
 module.exports = UserController;
