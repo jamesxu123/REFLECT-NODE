@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const argon2 = require('argon2');
 const User = require('../models/User');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 let UserController = {};
 
@@ -159,6 +160,51 @@ UserController.verifyUser = function(token, callback){
             }
         }
     });
+};
+
+UserController.createPayment = function(req, callback){
+    let amount = 999;
+    User.getByEmail(req.body.stripeEmail, function(err, user){
+        if(err || !user){
+            return callback(err);
+        }else{
+            if(user.status.paymentStatus == 0){
+                stripe.customers.create({
+                    email: req.body.stripeEmail,
+                    source: req.body.stripeToken
+                })
+                    .then(customer =>
+                        stripe.charges.create({
+                            amount,
+                            description: "Sample Charge",
+                            currency: "cad",
+                            customer: customer.id,
+                            metadata: {userID: user._id.toString()}
+                        }))
+                    .then(charge => {
+                        console.log(charge);
+                        User.findOneAndUpdate({email:req.body.stripeEmail},{$set:{'status.paymentStatus':1,chargeID:charge.id}}, function(err,user){
+                            if(err){
+                                return callback(null,{chargeID:charge.id});
+                            }
+                            else{
+                                return callback(null,{message:"Success", chargeID:charge.id})
+                            }
+                        });
+                    })
+                    .catch(err => {
+                        // Deal with an error
+                        console.log(err.message);
+                        return callback({error:err},{message:"Your card was not charged."});
+                    });
+            }
+            else{
+                return callback({error:"You have already paid the fee or have filed a dispute. Your card has not been charged again."});
+            }
+
+        }
+    })
+
 };
 
 module.exports = UserController;

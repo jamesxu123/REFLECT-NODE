@@ -16,10 +16,10 @@ let status = {
         required: true,
         default: false
     },
-    paidFee: {
-        type: Boolean,
+    paymentStatus: {
+        type: Number,
         required: true,
-        default: false
+        default: 0
     },
     waitlisted: {
         type: Boolean,
@@ -175,6 +175,11 @@ var schema = {
         type: Number,
         required: true,
         default: 0
+    },
+
+    chargeID: {
+        type: String,
+        required: false
     },
 
     role: {
