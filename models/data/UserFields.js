@@ -16,6 +16,11 @@ let status = {
         required: true,
         default: false
     },
+    paidFee: {
+        type: Boolean,
+        required: true,
+        default: false
+    },
     waitlisted: {
         type: Boolean,
         required: true,

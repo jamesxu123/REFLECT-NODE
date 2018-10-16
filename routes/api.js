@@ -1,18 +1,9 @@
 const express = require('express');
-const mysql = require('mysql');
 const jwt = require('jsonwebtoken');
 const util = require('util');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 let router = express.Router();
-
-let pool = mysql.createPool({
-    connectionLimit: 10,
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-});
-
 /* GET home page. */
 router.get('/', function (req, res, next) {
     res.render('index', {title: 'API'});
@@ -39,5 +30,37 @@ router.post('/viewAllApplications', function (req, res, next) {
         }
     })
 });
+router.post('/charge', function (req, res, next) {
+    //console.log(req);
+    let role = 2;
+    let responseJSON = {
+        status: 200,
+        message: 'OK'
+    };
 
+    let amount = 999;
+
+    stripe.customers.create({
+        email: req.body.stripeEmail,
+        source: req.body.stripeToken
+    })
+        .then(customer =>
+            stripe.charges.create({
+                amount,
+                description: "Sample Charge",
+                currency: "cad",
+                customer: customer.id,
+                metadata: {userid:1234}
+            }))
+        .then(charge => {
+                console.log(charge);
+                res.send(responseJSON);
+        })
+        .catch(err => {
+            // Deal with an error
+            console.log(err.message);
+            res.send(responseJSON);
+         });
+
+});
 module.exports = router;
