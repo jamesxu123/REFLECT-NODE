@@ -36,19 +36,6 @@ schema.statics.getByEmail = function (email, callback) {
     });
 };
 
-schema.statics.getByUsername = function (username, callback) {
-    this.findOne({
-        username:  username ? username.toLowerCase() : username
-    }, function(err, user) {
-        if (err || !user) {
-            return callback(err ? err : {
-                error: 'User not found'
-            })
-        }
-        return callback(null, user);
-    });
-};
-
 schema.virtual('fullName').get(function() {
     if (this.firstName && this.lastName) {
         return this.firstName + ' ' + this.lastName;

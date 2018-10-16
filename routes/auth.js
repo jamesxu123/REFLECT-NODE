@@ -2,21 +2,12 @@ const express = require('express');
 const argon2 = require('argon2');
 const jwt = require('jsonwebtoken');
 const util = require('util');
-const mysql = require('mysql');
-const uuidv1 = require('uuid/v1');
 const sgMail = require('@sendgrid/mail');
 const hb = require('handlebars');
 const fs = require('fs');
 const UserController = require('../controllers/UserController');
 let router = express.Router();
 
-let pool = mysql.createPool({
-    connectionLimit: 10,
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-});
 sgMail.setApiKey(process.env.SG_API);
 
 router.post('/login', function (req, res, next) {
@@ -71,7 +62,6 @@ router.post('/login', function (req, res, next) {
 });
 
 router.post('/signup', function (req, res, next) {
-    let username = req.body.username;
     let firstname = req.body.firstname;
     let lastname = req.body.lastname;
     let email = req.body.email;
@@ -85,7 +75,7 @@ router.post('/signup', function (req, res, next) {
     argon2.hash(password, {
         type: argon2.argon2i
     }).then(hash => {
-        UserController.createUser(username, firstname, lastname, role, email, hash, function (error, message) {
+        UserController.createUser(firstname, lastname, role, email, hash, function (error, message) {
             if (error) {
                 responseJSON.status = 500;
                 responseJSON.message = error;
@@ -115,6 +105,8 @@ router.post('/signup', function (req, res, next) {
                 })
             }
         })
+    }).catch(err => {
+        return callback(err);
     });
 });
 
