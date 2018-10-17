@@ -10,9 +10,28 @@ let router = express.Router();
 
 sgMail.setApiKey(process.env.SG_API);
 
+function getRequester(token){
+    let defaultDecoded = {
+        role: 3
+    };
+
+    let decoded;
+    try{
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
+    }
+    catch (Exception){
+        decoded = {
+            role: 3
+        }
+    }
+    console.log(decoded);
+    return defaultDecoded;
+}
+
 router.post('/login', function (req, res, next) {
     let email = req.body.email;
     let password = req.body.password;
+    console.log(req.token);
     // let queryString = util.format("SELECT * FROM users WHERE username='%s';", username);
     let responseJSON = {
         status: 200,
@@ -48,7 +67,7 @@ router.post('/signup', function (req, res, next) {
                 responseJSON.status = 500;
                 responseJSON.message = error;
                 res.send(responseJSON);
-            } else {
+            } else if(message.verifyToken !== -999){
                 fs.readFile('./emailTemplates/emailVerifyTemplate.hbs', 'UTF-8', function (err, contents) {
                     if (err) {
                         responseJSON.status = 500;
@@ -72,9 +91,15 @@ router.post('/signup', function (req, res, next) {
                     }
                 })
             }
-        })
+            else{
+                res.send(responseJSON);
+            }
+        }, getRequester(req.token))
     }).catch(err => {
-        return callback(err);
+        responseJSON.status = 500;
+        responseJSON.message = "Internal server error";
+        console.log(err);
+        res.send(responseJSON);
     });
 });
 
@@ -90,11 +115,11 @@ router.get('/verify/:verifyToken', function (req, res, next) {
             responseJSON.message = err;
             responseJSON.status = 500;
         } else {
-
+            res.send(responseJSON);
         }
 
     });
-    res.send(responseJSON);
+
 });
 
 

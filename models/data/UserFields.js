@@ -70,6 +70,9 @@ let status = {
     statusReleased: {
         type: Boolean,
         default: false
+    },
+    additionalRoles: {
+        type: [String]
     }
 };
 

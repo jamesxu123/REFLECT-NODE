@@ -1,0 +1,6 @@
+User roles:
+-1 : Internal System
+0: Administrator
+1: Staff
+2: Registered user
+3: Unregisterd user

@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
+const bearerToken = require('express-bearer-token');
 require('dotenv').config();
 
 const indexRouter = require('./routes/index');
@@ -24,6 +25,7 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({extended: false}));
 app.use(cookieParser());
+app.use(bearerToken());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
