@@ -1,15 +1,19 @@
 const jwt = require('jsonwebtoken');
 const argon2 = require('argon2');
 const User = require('../models/User');
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const SettingsController = require('../controllers/SettingsController');
 
+//Stripe will only be loaded if needed
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const msgDisabled = "This function has been disabled by your system administrator.";
-const msgNotInit = msgNotInit;
+const msgNotInit = "The system has not yet finished initializing. Please wait a moment and try again.";
+const msgPrivTooLow = "You do not have sufficient privileges to perform this action.";
 
 let UserController = {};
 
 let settings;
+
 SettingsController.returnSettings(function(err,rSettings){
     console.log('urmom');
     if (err || !rSettings) {
@@ -19,10 +23,11 @@ SettingsController.returnSettings(function(err,rSettings){
     else {
         settings = rSettings;
         console.log('done');
-        console.log(settings);
+        console.log(rSettings);
     }
 
 });
+
 
 UserController.createUser = function (firstname, lastname, role, email, password, callback, requesterObj) {
     if(settings){
@@ -85,15 +90,26 @@ UserController.createUser = function (firstname, lastname, role, email, password
 
 UserController.updateUser = function (id, dataPack, callback, requesterObj) {
     if(settings){
-        dataPack.lastUpdated = Date.now();
-        User.findOneAndUpdate({_id: id}, {$set: dataPack}, {returnNewDocument: true}, function (err, user) {
-            if (err) {
-                return callback(err);
+        if((settings.users.canUpdateSelf && requesterObj.id && requesterObj.id == id) || requesterObj.role < 2 ){
+            dataPack.lastUpdated = Date.now();
+            User.findOneAndUpdate({_id: id}, {$set: dataPack}, {returnNewDocument: true}, function (err, user) {
+                if (err) {
+                    return callback(err);
+                }
+                else {
+                    return callback(null, user);
+                }
+            });
+        }
+        else {
+            if((requesterObj.id && requesterObj.id != id) || !requesterObj.id){
+                return callback({error: msgPrivTooLow});
             }
-            else {
-                return callback(null, user);
+            else{
+                return callback({error: msgDisabled});
             }
-        });
+
+        }
     }
     else{
         return callback({ error: msgNotInit})
@@ -124,49 +140,55 @@ UserController.getPasswordResetToken = function (id, callback, requesterObj) {
 
 UserController.resetPassword = function (token, password, callback, requesterObj) {
     if(settings){
-        jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
-            if (err || !decoded) {
-                return callback(err);
-            }
-            else {
-                User.findOne({_id: decoded.id}, {passwordLastUpdated: 1}, function (err, user) {
-                    if (err) {
-                        return callback(err);
-                    }
-                    else {
-                        if (decoded.issued > user.passwordLastUpdated || decoded.exp <= Date.now()) {
-                            // update password
-                            argon2.hash(password, {
-                                type: argon2.argon2i
-                            }).then(hash => {
-                                User.findOneAndUpdate({_id: decoded.id}, {
-                                    $set: {
-                                        password: hash,
-                                        passwordLastUpdated: Date.now()
-                                    }
-                                }, function (err, user) {
-                                    if (err) {
-                                        return callback(err);
-                                    }
-                                    else {
-                                        return callback(null, {message: "Success"});
-                                    }
-                                });
-                            }).catch(err => {
-                                return callback(err);
-                            });
-
+        if(settings.users.canSelfPasswordReset || requesterObj.role < 2){
+            jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
+                if (err || !decoded) {
+                    return callback(err);
+                }
+                else {
+                    User.findOne({_id: decoded.id}, {passwordLastUpdated: 1}, function (err, user) {
+                        if (err) {
+                            return callback(err);
                         }
                         else {
-                            return callback({error: "The token has expired!"});
+                            if (decoded.issued > user.passwordLastUpdated || decoded.exp <= Date.now()) {
+                                // update password
+                                argon2.hash(password, {
+                                    type: argon2.argon2i
+                                }).then(hash => {
+                                    User.findOneAndUpdate({_id: decoded.id}, {
+                                        $set: {
+                                            password: hash,
+                                            passwordLastUpdated: Date.now()
+                                        }
+                                    }, function (err, user) {
+                                        if (err) {
+                                            return callback(err);
+                                        }
+                                        else {
+                                            return callback(null, {message: "Success"});
+                                        }
+                                    });
+                                }).catch(err => {
+                                    return callback(err);
+                                });
+
+                            }
+                            else {
+                                return callback({error: "The token has expired!"});
+                            }
                         }
-                    }
-                })
-            }
-        });
+                    })
+                }
+            });
+        }
+        else{
+            return callback({error: msgDisabled});
+        }
+
     }
     else{
-        return callback({ error: msgNotInit})
+        return callback({error: msgNotInit})
     }
 
 };
@@ -181,7 +203,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
             }
             else {
                 argon2.verify(user.password, password).then(match => {
-                    if (match) {
+                    if (match || requesterObj.role < 1) {
                         console.log("Login by:\n" + user);
                         if (user.status.active) {
                             let tokenJSON = {
@@ -194,7 +216,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
                                 application: user.application
                             };
                             let token = jwt.sign(tokenJSON, process.env.JWT_SECRET, {
-                                expiresIn: Date.now() + 86400
+                                expiresIn: settings.users.authTokenValidLength
                             });
                             return callback(null, {token: token});
                         }
@@ -216,24 +238,30 @@ UserController.loginWithPassword = function (email, password, callback, requeste
 
 UserController.verifyUser = function (token, callback, requesterObj) {
     if(settings){
-        jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
-            if (err) {
-                return callback(err);
-            }
-            else {
-                if (decoded.id && decoded.exp >= Date.now()) {
-                    User.findOneAndUpdate({_id: decoded.id}, {$set: {'status.active': true}}, function (err) {
-                        if (err) {
-                            return callback(err);
-                        }
-                        return callback(null, {message: "Success"});
-                    });
+        if(!settings.users.mustVerifyEmail || requesterObj.role < 2){
+            jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
+                if (err) {
+                    return callback(err);
                 }
                 else {
-                    return callback({error: "The given token is invalid or has expired."});
+                    if (decoded.id && decoded.exp >= Date.now()) {
+                        User.findOneAndUpdate({_id: decoded.id}, {$set: {'status.active': true}}, function (err) {
+                            if (err) {
+                                return callback(err);
+                            }
+                            return callback(null, {message: "Success"});
+                        });
+                    }
+                    else {
+                        return callback({error: "The given token is invalid or has expired."});
+                    }
                 }
-            }
-        });
+            });
+        }
+        else {
+            return callback({error: msgDisabled});
+        }
+
     }
     else{
         return callback({ error: msgNotInit})
@@ -242,52 +270,58 @@ UserController.verifyUser = function (token, callback, requesterObj) {
 
 UserController.createPayment = function (req, callback, requesterObj) {
     if(settings) {
-        let amount = 999;
-        User.getByEmail(req.body.stripeEmail, function (err, user) {
-            if (err || !user) {
-                return callback(err);
-            } else {
-                if (user.status.paymentStatus == 0) {
-                    stripe.customers.create({
-                        email: req.body.stripeEmail,
-                        source: req.body.stripeToken
-                    })
-                        .then(customer =>
-                            stripe.charges.create({
-                                amount,
-                                description: "Sample Charge",
-                                currency: "cad",
-                                customer: customer.id,
-                                metadata: {userID: user._id.toString()}
-                            }))
-                        .then(charge => {
-                            console.log(charge);
-                            User.findOneAndUpdate({email: req.body.stripeEmail}, {
-                                $set: {
-                                    'status.paymentStatus': 1,
-                                    chargeID: charge.id
-                                }
-                            }, function (err, user) {
-                                if (err) {
-                                    return callback(null, {chargeID: charge.id});
-                                }
-                                else {
-                                    return callback(null, {message: "Success", chargeID: charge.id})
-                                }
-                            });
+        if(settings.applications.paymentRequired && settings.applications.paymentAmount > 0){
+            let amount = settings.applications.paymentAmount;
+            User.getByEmail(req.body.stripeEmail, function (err, user) {
+                if (err || !user) {
+                    return callback(err);
+                } else {
+                    if (user.status.paymentStatus == 0) {
+                        stripe.customers.create({
+                            email: req.body.stripeEmail,
+                            source: req.body.stripeToken
                         })
-                        .catch(err => {
-                            // Deal with an error
-                            console.log(err.message);
-                            return callback({error: err}, {message: "Your card was not charged."});
-                        });
-                }
-                else {
-                    return callback({error: "You have already paid the fee or have filed a dispute. Your card has not been charged again."});
-                }
+                            .then(customer =>
+                                stripe.charges.create({
+                                    amount,
+                                    description: "Sample Charge",
+                                    currency: "cad",
+                                    customer: customer.id,
+                                    metadata: {userID: user._id.toString()}
+                                }))
+                            .then(charge => {
+                                console.log(charge);
+                                User.findOneAndUpdate({email: req.body.stripeEmail}, {
+                                    $set: {
+                                        'status.paymentStatus': 1,
+                                        chargeID: charge.id
+                                    }
+                                }, function (err, user) {
+                                    if (err) {
+                                        return callback(null, {chargeID: charge.id});
+                                    }
+                                    else {
+                                        return callback(null, {message: "Success", chargeID: charge.id})
+                                    }
+                                });
+                            })
+                            .catch(err => {
+                                // Deal with an error
+                                console.log(err.message);
+                                return callback({error: err}, {message: "Your card was not charged."});
+                            });
+                    }
+                    else {
+                        return callback({error: "You have already paid the fee or have filed a dispute. Your card has not been charged again."});
+                    }
 
-            }
-        })
+                }
+            })
+        }
+        else{
+            return callback({error: msgDisabled});
+        }
+
     }
     else{
         return callback({ error: msgNotInit})

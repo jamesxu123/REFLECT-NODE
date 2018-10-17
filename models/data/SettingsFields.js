@@ -25,6 +25,11 @@ let userSettings = {
         type: Boolean,
         required: true,
         default: true
+    },
+    canUpdateSelf: {
+        type: Boolean,
+        required: true,
+        default: true
     }
 };
 
@@ -58,7 +63,7 @@ let applicationSettings = {
 
 let schema = {
     users: userSettings,
-    application: applicationSettings
+    applications: applicationSettings
 };
 
 module.exports = schema;
