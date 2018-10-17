@@ -27,38 +27,6 @@ router.post('/login', function (req, res, next) {
         responseJSON.token = token;
         res.send(responseJSON);
     });
-    // pool.query(queryString, function (error, results, fields) {
-    //     if (results.length === 0) {
-    //         responseJSON["status"] = 500;
-    //         responseJSON["message"] = "User Does Not Exist";
-    //         res.send(responseJSON);
-    //     } else {
-    //         argon2.verify(results[0].password, password).then(match => {
-    //             if (match) {
-    //                 if (results[0].verifytoken === '') {
-    //                     let tokenJSON = {
-    //                         username: username,
-    //                         id: parseInt(results[0].id),
-    //                         role: 0,//results[0].role,
-    //                         application: results[0].application,
-    //                     };
-    //                     let token = jwt.sign(tokenJSON, process.env.JWT_SECRET, {
-    //                         expiresIn: 60 * 60
-    //                     });
-    //                     responseJSON.token = token;
-    //                 } else {
-    //                     responseJSON.status = 403;
-    //                     responseJSON.message = "Verify Email First";
-    //                 }
-    //
-    //             } else {
-    //                 responseJSON.status = 403;
-    //                 responseJSON.message = 'Invalid Credentials';
-    //             }
-    //             res.send(responseJSON);
-    //         })
-    //     }
-    // });
 });
 
 router.post('/signup', function (req, res, next) {
@@ -127,29 +95,7 @@ router.get('/verify/:verifyToken', function (req, res, next) {
 
     });
     res.send(responseJSON);
-    // const queryString = util.format("SELECT id FROM users WHERE verifytoken='%s'", verifyToken);
-    // pool.query(queryString, function (error, results, fields) {
-    //     if (error) {
-    //         responseJSON.status = 500;
-    //         responseJSON.message = "Invalid Token";
-    //         res.send(responseJSON);
-    //     } else {
-    //         if (results.length > 0) {
-    //             const updateQueryString = util.format("UPDATE users set verifytoken='' WHERE verifytoken = '%s'", verifyToken);
-    //             pool.query(updateQueryString, function (error, results, fields) {
-    //                 if (error) {
-    //                     responseJSON.status = 500;
-    //                     responseJSON.message = "MySQL Error";
-    //                     res.send(responseJSON);
-    //                 } else {
-    //                     res.send(responseJSON);
-    //                 }
-    //             })
-    //         }
-    //     }
-    // })
 });
-
 
 
 module.exports = router;

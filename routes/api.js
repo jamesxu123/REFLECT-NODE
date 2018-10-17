@@ -37,16 +37,16 @@ router.post('/charge', function (req, res, next) {
         message: 'OK'
     };
 
-    UserController.createPayment(req, function(err,message){
-       if(err){
-           responseJSON.status = 500;
-           responseJSON.message = err;
-       }
-       else{
-           responseJSON.message = message;
-       }
+    UserController.createPayment(req, function (err, message) {
+        if (err) {
+            responseJSON.status = 500;
+            responseJSON.message = err;
+        }
+        else {
+            responseJSON.message = message;
+        }
 
-       res.send(responseJSON);
+        res.send(responseJSON);
     });
 
 });
