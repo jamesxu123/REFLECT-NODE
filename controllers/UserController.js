@@ -6,16 +6,21 @@ const SettingsController = require('../controllers/SettingsController');
 //Stripe will only be loaded if needed
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
+//Repeated error messages
 const msgDisabled = "This function has been disabled by your system administrator.";
 const msgNotInit = "The system has not yet finished initializing. Please wait a moment and try again.";
 const msgPrivTooLow = "You do not have sufficient privileges to perform this action.";
 
+//Define the exports dictionary
 let UserController = {};
 
 let settings;
 
+//Get system settings
 SettingsController.returnSettings(function(err,rSettings){
     console.log('urmom');
+
+    //Error or there are no settings
     if (err || !rSettings) {
         console.log("CRITICAL - UNABLE TO FETCH SETTINGS!");
         process.exit(1);
@@ -30,21 +35,26 @@ SettingsController.returnSettings(function(err,rSettings){
 
 
 UserController.createUser = function (firstname, lastname, role, email, password, callback, requesterObj) {
+    //Check if the settings have been fetched
     if(settings){
         console.log("I'm getting called!");
 
-        if(settings.users.canSelfRegister || requesterObj.role <= settings.system.adminRole) {
+        //This function can only be executed if users and self-register, or has a lower or equal role id as the one defined in settings
+        if(settings.users.canSelfRegister || requesterObj.role <= settings.overrideLevels.createUser) {
 
+            //If the role is not defined, set it as a regular user
             if(role === -9999){
                 role = settings.system.regularUserRole;
             }
 
+            //Check if the user already exists
             User.getByEmail(email, function (err, user) {
 
                 if (!err || user) {
                     return callback({message: "A user with the specified email already exists."});
                 }
                 else {
+                    //Create the user
                     User.create({
                             email: email,
                             firstName: firstname,
@@ -63,6 +73,8 @@ UserController.createUser = function (firstname, lastname, role, email, password
                             else {
                                 //user created!
                                 let verifyToken;
+
+                                //Create a verification token if verification is required
                                 if(settings.users.mustVerifyEmail){
                                     verifyToken = jwt.sign({id: user.id}, process.env.JWT_SECRET, {
                                         expiresIn: settings.users.authTokenValidLength
@@ -80,6 +92,7 @@ UserController.createUser = function (firstname, lastname, role, email, password
 
             });
         }
+        //Feature is disabled and user does not have enough privileges to override
         else{
             return callback({ error: msgDisabled})
         }
@@ -93,9 +106,18 @@ UserController.createUser = function (firstname, lastname, role, email, password
 };
 
 UserController.updateUser = function (id, dataPack, callback, requesterObj) {
+    //Ensure settings have been fetched
     if(settings){
-        if((settings.users.canUpdateSelf && requesterObj.id && requesterObj.id == id) || requesterObj.role <= settings.system.adminRole ){
+        //Check if users can update themselves and the id matches the one requested to be updated or has a permissions level higher than or equal to override the check
+        if((settings.users.canUpdateSelf && requesterObj.id && requesterObj.id == id) || requesterObj.role <= settings.overrideLevels.updateUser ){
+            //Set the user's last updated time
             dataPack.lastUpdated = Date.now();
+
+            //Remove any fields that cannot be changed
+            delete dataPack.application;
+            delete dataPack.password;
+            delete dataPack._id;
+
             User.findOneAndUpdate({_id: id}, {$set: dataPack}, {returnNewDocument: true}, function (err, user) {
                 if (err) {
                     return callback(err);
@@ -106,6 +128,8 @@ UserController.updateUser = function (id, dataPack, callback, requesterObj) {
             });
         }
         else {
+
+            //Check if the function is disabled or the user does not have enough privileges
             if((requesterObj.id && requesterObj.id != id) || !requesterObj.id){
                 return callback({error: msgPrivTooLow});
             }
@@ -122,7 +146,7 @@ UserController.updateUser = function (id, dataPack, callback, requesterObj) {
 
 UserController.getPasswordResetToken = function (id, callback, requesterObj) {
     if(settings) {
-        if(settings.users.canSelfPasswordReset || requesterObj.role <= settings.system.adminRole){
+        if(settings.users.canSelfPasswordReset || requesterObj.role <= settings.overrideLevels.getPasswordResetToken){
             let tokenJSON = {
                 id: user._id,
                 issued: Date.now()
@@ -201,7 +225,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
             }
             else {
                 argon2.verify(user.password, password).then(match => {
-                    if (match || requesterObj.role <= settings.system.adminRole) {
+                    if (match || requesterObj.role <= settings.overrideLevels.loginWithPasswordNoVerify) {
                         console.log("Login by:\n" + user);
                         if (user.status.active) {
                             let tokenJSON = {
@@ -236,7 +260,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
 
 UserController.verifyUser = function (token, callback, requesterObj) {
     if(settings){
-        if(!settings.users.mustVerifyEmail || requesterObj.role < settings.system.adminRole){
+        if(!settings.users.mustVerifyEmail || requesterObj.role < settings.overrideLevels.verifyUser){
             jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
                 if (err) {
                     return callback(err);

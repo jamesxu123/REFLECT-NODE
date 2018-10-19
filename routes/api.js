@@ -40,22 +40,6 @@ router.post('/viewAllApplications', function (req, res, next) {
         }
         res.send(responseJSON);
     }, getRequester(req.token));
-    /*
-    jwt.verify(req.body.token, process.env.JWT_SECRET, function (err, decoded) {
-        if (decoded.role < 2) {
-            pool.query("SELECT * FROM applications", function (error, results, fields) {
-                if (!error) {
-                    responseJSON.content = results;
-                } else {
-                    responseJSON.status = 500;
-                }
-                res.send(responseJSON);
-            })
-        } else {
-            responseJSON.status = 403;
-            res.send(responseJSON);
-        }
-    })*/
 });
 router.post('/charge', function (req, res, next) {
     //console.log(req);
