@@ -96,4 +96,23 @@ router.post('/createApplication', function (req, res, next) {
     },getRequester(req.token))
 
 });
+router.post('/removeApplication', function (req, res, next) {
+    //console.log(req);
+    let responseJSON = {
+        status: 200,
+        message: 'OK'
+    };
+
+    ApplicationController.removeApplication(req.body.appID, function(err, message){
+        if(err){
+            responseJSON.status = 500;
+            responseJSON.message = err;
+        }
+        else{
+            responseJSON.message = message;
+        }
+        res.send(responseJSON);
+    },getRequester(req.token))
+
+});
 module.exports = router;
