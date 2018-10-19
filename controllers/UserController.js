@@ -33,7 +33,11 @@ UserController.createUser = function (firstname, lastname, role, email, password
     if(settings){
         console.log("I'm getting called!");
 
-        if(settings.users.canSelfRegister || requesterObj.role < 2) {
+        if(settings.users.canSelfRegister || requesterObj.role <= settings.system.adminRole) {
+
+            if(role === -9999){
+                role = settings.system.regularUserRole;
+            }
 
             User.getByEmail(email, function (err, user) {
 
@@ -90,7 +94,7 @@ UserController.createUser = function (firstname, lastname, role, email, password
 
 UserController.updateUser = function (id, dataPack, callback, requesterObj) {
     if(settings){
-        if((settings.users.canUpdateSelf && requesterObj.id && requesterObj.id == id) || requesterObj.role < 2 ){
+        if((settings.users.canUpdateSelf && requesterObj.id && requesterObj.id == id) || requesterObj.role <= settings.system.adminRole ){
             dataPack.lastUpdated = Date.now();
             User.findOneAndUpdate({_id: id}, {$set: dataPack}, {returnNewDocument: true}, function (err, user) {
                 if (err) {
@@ -118,7 +122,7 @@ UserController.updateUser = function (id, dataPack, callback, requesterObj) {
 
 UserController.getPasswordResetToken = function (id, callback, requesterObj) {
     if(settings) {
-        if(settings.users.canSelfPasswordReset || requesterObj.role < 2){
+        if(settings.users.canSelfPasswordReset || requesterObj.role <= settings.system.adminRole){
             let tokenJSON = {
                 id: user._id,
                 issued: Date.now()
@@ -140,53 +144,47 @@ UserController.getPasswordResetToken = function (id, callback, requesterObj) {
 
 UserController.resetPassword = function (token, password, callback, requesterObj) {
     if(settings){
-        if(settings.users.canSelfPasswordReset || requesterObj.role < 2){
-            jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
-                if (err || !decoded) {
-                    return callback(err);
-                }
-                else {
-                    User.findOne({_id: decoded.id}, {passwordLastUpdated: 1}, function (err, user) {
-                        if (err) {
-                            return callback(err);
+        jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
+            if (err || !decoded) {
+                return callback(err);
+            }
+            else {
+                User.findOne({_id: decoded.id}, {passwordLastUpdated: 1}, function (err, user) {
+                    if (err) {
+                        return callback(err);
+                    }
+                    else {
+                        if (decoded.issued > user.passwordLastUpdated || decoded.exp <= Date.now()) {
+                            // update password
+                            argon2.hash(password, {
+                                type: argon2.argon2i
+                            }).then(hash => {
+                                User.findOneAndUpdate({_id: decoded.id}, {
+                                    $set: {
+                                        password: hash,
+                                        passwordLastUpdated: Date.now()
+                                    }
+                                }, function (err, user) {
+                                    if (err) {
+                                        return callback(err);
+                                    }
+                                    else {
+                                        return callback(null, {message: "Success"});
+                                    }
+                                });
+                            }).catch(err => {
+                                return callback(err);
+                            });
+
                         }
                         else {
-                            if (decoded.issued > user.passwordLastUpdated || decoded.exp <= Date.now()) {
-                                // update password
-                                argon2.hash(password, {
-                                    type: argon2.argon2i
-                                }).then(hash => {
-                                    User.findOneAndUpdate({_id: decoded.id}, {
-                                        $set: {
-                                            password: hash,
-                                            passwordLastUpdated: Date.now()
-                                        }
-                                    }, function (err, user) {
-                                        if (err) {
-                                            return callback(err);
-                                        }
-                                        else {
-                                            return callback(null, {message: "Success"});
-                                        }
-                                    });
-                                }).catch(err => {
-                                    return callback(err);
-                                });
-
-                            }
-                            else {
-                                return callback({error: "The token has expired!"});
-                            }
+                            return callback({error: "The token has expired!"});
                         }
-                    })
-                }
-            });
+                    }
+                })
+            }
+        });
         }
-        else{
-            return callback({error: msgDisabled});
-        }
-
-    }
     else{
         return callback({error: msgNotInit})
     }
@@ -203,7 +201,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
             }
             else {
                 argon2.verify(user.password, password).then(match => {
-                    if (match || requesterObj.role < 1) {
+                    if (match || requesterObj.role <= settings.system.adminRole) {
                         console.log("Login by:\n" + user);
                         if (user.status.active) {
                             let tokenJSON = {
@@ -238,7 +236,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
 
 UserController.verifyUser = function (token, callback, requesterObj) {
     if(settings){
-        if(!settings.users.mustVerifyEmail || requesterObj.role < 2){
+        if(!settings.users.mustVerifyEmail || requesterObj.role < settings.system.adminRole){
             jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
                 if (err) {
                     return callback(err);
@@ -270,7 +268,7 @@ UserController.verifyUser = function (token, callback, requesterObj) {
 
 UserController.createPayment = function (req, callback, requesterObj) {
     if(settings) {
-        if(settings.applications.paymentRequired && settings.applications.paymentAmount > 0){
+        if(settings.applications.applicationsEnabled && settings.applications.paymentRequired && settings.applications.paymentAmount > 0){
             let amount = settings.applications.paymentAmount;
             User.getByEmail(req.body.stripeEmail, function (err, user) {
                 if (err || !user) {

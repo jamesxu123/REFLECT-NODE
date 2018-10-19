@@ -58,12 +58,46 @@ let applicationSettings = {
         type: Boolean,
         required: true,
         default: true
+    },
+    usersCanViewOtherApplications: {
+        type: Boolean,
+        required: true,
+        default: false
+    },
+    applicationsOpen: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    applicationsClose: {
+        type: Number,
+        required: true,
+        default: 9999999999999999
+    }
+};
+
+let systemSettings = {
+    regularUserRole: {
+        type: Number,
+        required: true,
+        default: 2
+    },
+    regularStaffRole: {
+        type: Number,
+        required: true,
+        default: 1
+    },
+    adminRole: {
+        type: Number,
+        required: true,
+        default: 0
     }
 };
 
 let schema = {
     users: userSettings,
-    applications: applicationSettings
+    applications: applicationSettings,
+    system: systemSettings
 };
 
 module.exports = schema;

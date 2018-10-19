@@ -11,10 +11,6 @@ let router = express.Router();
 sgMail.setApiKey(process.env.SG_API);
 
 function getRequester(token){
-    let defaultDecoded = {
-        role: 3
-    };
-
     let decoded;
     try{
         decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -25,7 +21,7 @@ function getRequester(token){
         }
     }
     console.log(decoded);
-    return defaultDecoded;
+    return decoded;
 }
 
 router.post('/login', function (req, res, next) {
@@ -43,7 +39,7 @@ router.post('/login', function (req, res, next) {
             responseJSON.message = error;
             responseJSON.status = 403;
         }
-        responseJSON.token = token;
+        responseJSON.token = token.token;
         res.send(responseJSON);
     });
 });
@@ -54,7 +50,7 @@ router.post('/signup', function (req, res, next) {
     let email = req.body.email;
     let password = req.body.password;
 
-    let role = 2;
+    let role = -9999;
     let responseJSON = {
         status: 200,
         message: 'OK'
