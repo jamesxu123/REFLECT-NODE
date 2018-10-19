@@ -99,4 +99,50 @@ ApplicationController.createApplication = function(userid, applicationData, call
 
 };
 
+ApplicationController.removeApplication = function(appid, callback, requesterObj){
+    if(settings){
+        if((settings.applications.applicationsEnabled && userid === requesterObj.id) || requesterObj.role <= settings.system.adminRole){
+            User.findOne({application: appid}, function(err, user){
+                if(err){
+                    return callback(err);
+                }
+                if(user){
+                    User.findByIdAndUpdate(user._id, {$unset: {application: 1}}, function(err, user){
+                        if(err){
+                            return callback(err);
+                        }
+                        else{
+                            Application.findOneAndDelete({_id: appid}, function(err, user){
+                                if(err){
+                                    return callback(err);
+                                }
+                                else{
+                                    return callback(null, {message: "Success"});
+                                }
+                            });
+                        }
+                    });
+                }
+                else{
+                    Application.findOneAndDelete({_id: appid}, function(err, user){
+                        if(err){
+                            return callback(err);
+                        }
+                        else{
+                            return callback(null, {message: "Success"});
+                        }
+                    });
+                }
+            });
+        }
+        else{
+            return callback({error: msgDisabled});
+        }
+    }
+    else{
+        return callback({error: msgNotInit})
+    }
+
+};
+
 module.exports = ApplicationController;
