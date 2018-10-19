@@ -94,10 +94,43 @@ let systemSettings = {
     }
 };
 
+let overrideSettingsUserController = {
+    createUser: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    updateUser:{
+        type: Number,
+        required: true,
+        default: 0
+    },
+    getPasswordResetToken: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    loginWithPasswordNoVerify: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    verifyUser: {
+        type: Number,
+        required: true,
+        default: 0
+    }
+};
+
+let overrideSettings = {
+    UserController: overrideSettingsUserController
+};
+
 let schema = {
     users: userSettings,
     applications: applicationSettings,
-    system: systemSettings
+    system: systemSettings,
+    overrideLevels: overrideSettings
 };
 
 module.exports = schema;
