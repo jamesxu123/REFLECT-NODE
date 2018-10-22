@@ -137,6 +137,10 @@ var schema = {
 
     status: status,
 
+    agent: {
+        type: mongoose.Schema.ObjectId
+    },
+
     // Only parts user can update
     application: {
         type: mongoose.Schema.ObjectId
