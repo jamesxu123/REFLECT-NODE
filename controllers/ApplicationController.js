@@ -83,7 +83,7 @@ ApplicationController.createApplication = function(userid, applicationData, call
                             });
 
                         }
-                    })
+                    });
                 }
             })
 

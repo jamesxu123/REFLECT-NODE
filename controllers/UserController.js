@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const argon2 = require('argon2');
 const User = require('../models/User');
 const SettingsController = require('../controllers/SettingsController');
+const Application = require('../models/Application');
 
 //Stripe will only be loaded if needed
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -142,7 +143,7 @@ UserController.createAgentUser = function(firstname, lastname, role, email, pass
                                 let verifyToken;
 
                                 //Create a verification token if verification is required
-                                if(settings.users.mustVerifyEmail){
+                                if(settings.agents.mustVerifyEmail){
                                     verifyToken = jwt.sign({id: user.id}, process.env.JWT_SECRET, {
                                         expiresIn: settings.users.authTokenValidLength
                                     });
@@ -172,12 +173,86 @@ UserController.createAgentUser = function(firstname, lastname, role, email, pass
 UserController.agentBulkSignup = function(dataPack, callback, requesterObj){
     if(settings) {
         if ((settings.agents.agentsEnabled && requesterObj.additionalRoles.indexOf('agent') !== -1) || requesterObj.role <= settings.overrideLevels.UserController.agentBulkSignup) {
-            if(dataPack.length > settings.agents.maxUserSignup || requesterObj.role <= settings.overridesLevels.UserController.bypassAgentBulkSignupLimit){
+            if(dataPack.length > settings.agents.maxUserSignup || requesterObj.role <= settings.overrideLevels.UserController.bypassAgentBulkSignupLimit){
+                let pushArray = [];
+                let emailArray = [];
+
                 for(userData of dataPack){
-                    //register the user
+                    emailArray.push(userData['email']);
                 }
+
+                User.find({ email: { $all: emailArray }}, function(err, users){
+                    if(err){
+                       return callback(err)
+                    }
+                    else if(users.length > 0){
+                        let userEmails = [];
+                        for(userDup of users){
+                            userEmails.push(userDup.email);
+                        }
+                        return callback({error:"Duplicate entry!",emails:userEmails})
+                    }
+                    //TODO: CHECK IF THE DATAPACK CONTAINS ALL FIELDS
+                    else{
+                        for(userData of dataPack){
+                            User.create({
+                                    email: userData['email'],
+                                    firstName: userData['firstname'],
+                                    lastName: userData['lastname'],
+                                    password: userData['password'],
+                                    role: settings.system.regularUserRole,
+                                    passwordLastUpdated: Date.now(),
+                                    lastUpdated: Date.now(),
+                                    'status.active': !settings.agents.agentClientsMustVerifyEmail
+
+                                }, function (err, user) {
+                                    if (err || !user) {
+                                        console.log("BULK USER CREATE ERROR",err)
+                                    }
+                                    else {
+                                        //user created!
+                                        let verifyToken;
+
+                                        //Create a verification token if verification is required
+                                        if(settings.agents.agentClientsMustVerifyEmail){
+                                            verifyToken = jwt.sign({id: user.id}, process.env.JWT_SECRET, {
+                                                expiresIn: settings.users.authTokenValidLength
+                                            });
+                                            //TODO: SEND EMAIL
+                                        }
+
+                                        if(settings.agents.fillsClientApplication && userData.application){
+                                            userData['application']['userID'] = user._id;
+                                            Application.create(userData.application, function(err, application){
+                                                if(err){
+                                                    console.log("BULK USER APPLICATION CREATE ERROR",err)
+                                                }
+                                                else{
+                                                    console.log(application._id);
+                                                    User.findByIdAndUpdate(user._id, {$set: {application: application._id}}, { new: true }, function(err, user){
+                                                        if(err){
+                                                            console.log("BULK USER APPLICATION UPDATE ERROR",err)
+                                                        }
+                                                    });
+
+                                                }
+                                            });
+                                        }
+
+                                    }
+                                }
+                            );
+                        }
+
+                    }
+
+                    return callback(null,{message:"Success"});
+
+                });
+
+                //return callback(null)
             }
-            
+
         }
         else {
             return callback({error: msgDisabled})
@@ -324,6 +399,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
                             let token = jwt.sign(tokenJSON, process.env.JWT_SECRET, {
                                 expiresIn: settings.users.authTokenValidLength
                             });
+                            console.log(token)
                             return callback(null, {token: token});
                         }
                         else {
