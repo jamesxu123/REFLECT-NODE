@@ -40,7 +40,7 @@ UserController.createUser = function (firstname, lastname, role, email, password
         console.log("I'm getting called!");
 
         //This function can only be executed if users and self-register, or has a lower or equal role id as the one defined in settings
-        if(settings.users.canSelfRegister || requesterObj.role <= settings.overrideLevels.createUser) {
+        if(settings.users.canSelfRegister || requesterObj.role <= settings.overrideLevels.UserController.createUser) {
 
             //If the role is not defined, set it as a regular user
             if(role === -9999){
@@ -105,11 +105,94 @@ UserController.createUser = function (firstname, lastname, role, email, password
 
 };
 
+UserController.createAgentUser = function(firstname, lastname, role, email, password, callback, requesterObj){
+    if(settings){
+        if(settings.agents.agentsEnabled || requesterObj.role <= settings.overrideLevels.UserController.createAgentUser){
+            //If the role is not defined, set it as a regular user
+            if(role === -9999){
+                role = settings.system.regularUserRole;
+            }
+
+            //Check if the user already exists
+            User.getByEmail(email, function (err, user) {
+
+                if (!err || user) {
+                    return callback({message: "A user with the specified email already exists."});
+                }
+                else {
+                    //Create the user
+                    User.create({
+                            email: email,
+                            firstName: firstname,
+                            lastName: lastname,
+                            password: password,
+                            role: role,
+                            passwordLastUpdated: Date.now(),
+                            lastUpdated: Date.now(),
+                            'status.additionalRoles': ['agent'],
+                            'status.active': !settings.agents.mustVerifyEmail
+
+                        }, function (err, user) {
+                            if (err || !user) {
+                                console.log(err);
+                                return callback(err);
+                            }
+                            else {
+                                //user created!
+                                let verifyToken;
+
+                                //Create a verification token if verification is required
+                                if(settings.users.mustVerifyEmail){
+                                    verifyToken = jwt.sign({id: user.id}, process.env.JWT_SECRET, {
+                                        expiresIn: settings.users.authTokenValidLength
+                                    });
+                                }
+                                else{
+                                    verifyToken = -999;
+                                }
+
+                                return callback(null, {verifyToken: verifyToken});
+                            }
+                        }
+                    );
+                }
+
+            });
+        }
+        //Feature is disabled and user does not have enough privileges to override
+        else{
+            return callback({ error: msgDisabled})
+        }
+    }
+    else{
+        return callback({ error: msgNotInit})
+    }
+};
+
+UserController.agentBulkSignup = function(dataPack, callback, requesterObj){
+    if(settings) {
+        if ((settings.agents.agentsEnabled && requesterObj.additionalRoles.indexOf('agent') !== -1) || requesterObj.role <= settings.overrideLevels.UserController.agentBulkSignup) {
+            if(dataPack.length > settings.agents.maxUserSignup || requesterObj.role <= settings.overridesLevels.UserController.bypassAgentBulkSignupLimit){
+                for(userData of dataPack){
+                    //register the user
+                }
+            }
+            
+        }
+        else {
+            return callback({error: msgDisabled})
+        }
+    }
+    else{
+        return callback({ error: msgNotInit})
+    }
+};
+
 UserController.updateUser = function (id, dataPack, callback, requesterObj) {
     //Ensure settings have been fetched
     if(settings){
         //Check if users can update themselves and the id matches the one requested to be updated or has a permissions level higher than or equal to override the check
-        if((settings.users.canUpdateSelf && requesterObj.id && requesterObj.id == id) || requesterObj.role <= settings.overrideLevels.updateUser ){
+        if((settings.users.canUpdateSelf && requesterObj.id && requesterObj.id == id) || requesterObj.role <= settings.overrideLevels.UserController.updateUser ){
             //Set the user's last updated time
             dataPack.lastUpdated = Date.now();
 
@@ -146,7 +229,7 @@ UserController.updateUser = function (id, dataPack, callback, requesterObj) {
 
 UserController.getPasswordResetToken = function (id, callback, requesterObj) {
     if(settings) {
-        if(settings.users.canSelfPasswordReset || requesterObj.role <= settings.overrideLevels.getPasswordResetToken){
+        if(settings.users.canSelfPasswordReset || requesterObj.role <= settings.overrideLevels.UserController.getPasswordResetToken){
             let tokenJSON = {
                 id: user._id,
                 issued: Date.now()
@@ -225,7 +308,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
             }
             else {
                 argon2.verify(user.password, password).then(match => {
-                    if (match || requesterObj.role <= settings.overrideLevels.loginWithPasswordNoVerify) {
+                    if (match || requesterObj.role <= settings.overrideLevels.UserController.loginWithPasswordNoVerify) {
                         console.log("Login by:\n" + user);
                         if (user.status.active) {
                             let tokenJSON = {
@@ -235,7 +318,8 @@ UserController.loginWithPassword = function (email, password, callback, requeste
                                 id: user._id,
                                 issued: Date.now(),
                                 role: parseInt(user.role),
-                                application: user.application
+                                application: user.application,
+                                additionalRoles: user.status.additionalRoles
                             };
                             let token = jwt.sign(tokenJSON, process.env.JWT_SECRET, {
                                 expiresIn: settings.users.authTokenValidLength
@@ -260,7 +344,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
 
 UserController.verifyUser = function (token, callback, requesterObj) {
     if(settings){
-        if(!settings.users.mustVerifyEmail || requesterObj.role < settings.overrideLevels.verifyUser){
+        if(!settings.users.mustVerifyEmail || requesterObj.role < settings.overrideLevels.UserController.verifyUser){
             jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
                 if (err) {
                     return callback(err);

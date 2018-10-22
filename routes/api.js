@@ -13,7 +13,9 @@ function getRequester(token){
     }
     catch (Exception){
         decoded = {
-            role: 3
+            role: 3,
+            id: -2,
+            additionalRoles: []
         }
     }
     console.log(decoded);

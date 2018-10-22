@@ -119,6 +119,49 @@ let overrideSettingsUserController = {
         type: Number,
         required: true,
         default: 0
+    },
+    createAgentUser: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    agentBulkSignup: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    bypassAgentBulkSignupLimit: {
+        type: Number,
+        required: true,
+        default: 0
+    }
+};
+
+let agentSettings = {
+    agentsEnabled: {
+        type: Boolean,
+        required: true,
+        default: false,
+    },
+    agentsPayForApplicants: {
+        type: Boolean,
+        required: true,
+        default: true
+    },
+    mustVerifyEmail: {
+        type: Boolean,
+        required: true,
+        default: true
+    },
+    maxUserSignup: {
+        type: Number,
+        required: true,
+        default: 150
+    },
+    agentClientsMustVerifyEmail: {
+        type: Number,
+        required: true,
+        default: false
     }
 };
 
@@ -130,7 +173,8 @@ let schema = {
     users: userSettings,
     applications: applicationSettings,
     system: systemSettings,
-    overrideLevels: overrideSettings
+    overrideLevels: overrideSettings,
+    agents: agentSettings
 };
 
 module.exports = schema;
