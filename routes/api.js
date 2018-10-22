@@ -101,4 +101,23 @@ router.post('/removeApplication', function (req, res, next) {
     },getRequester(req.token))
 
 });
+router.post('/bulkSignup', function (req, res, next) {
+    //console.log(req);
+    let responseJSON = {
+        status: 200,
+        message: 'OK'
+    };
+
+    UserController.agentBulkSignup(req.body.applications, function(err, message){
+        if(err){
+            responseJSON.status = 500;
+            responseJSON.message = err;
+        }
+        else{
+            responseJSON.message = message;
+        }
+        res.send(responseJSON);
+    },getRequester(req.token))
+
+});
 module.exports = router;

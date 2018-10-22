@@ -4,3 +4,11 @@ User roles:
 1: Staff
 2: Registered user
 3: Unregisterd user
+
+Templates:
+if(settings){
+        
+    }
+    else{
+        return callback({ error: msgNotInit})
+    }

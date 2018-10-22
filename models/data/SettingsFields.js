@@ -162,6 +162,11 @@ let agentSettings = {
         type: Number,
         required: true,
         default: false
+    },
+    fillsClientApplication: {
+        type: Boolean,
+        required: true,
+        default: true
     }
 };
 
