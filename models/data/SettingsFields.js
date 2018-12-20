@@ -159,7 +159,12 @@ let agentSettings = {
         default: 150
     },
     agentClientsMustVerifyEmail: {
-        type: Number,
+        type: Boolean,
+        required: true,
+        default: false
+    },
+    agentReceivesClientEmail: {
+        type: Boolean,
         required: true,
         default: false
     },

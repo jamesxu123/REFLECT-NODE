@@ -32,16 +32,24 @@ router.post('/viewAllApplications', function (req, res, next) {
         status: 200,
         content: null
     };
-    ApplicationController.getAllApplications(function(err,applications){
-        if(err){
-            responseJSON.status = 500;
-            responseJSON.content = err;
-        }
-        else{
-            responseJSON.content = applications;
-        }
+    if(req.token){
+        ApplicationController.getAllApplications(function(err,applications){
+            if(err){
+                responseJSON.status = 500;
+                responseJSON.content = err;
+            }
+            else{
+                responseJSON.content = applications;
+            }
+            res.send(responseJSON);
+        }, getRequester(req.token));
+    }
+    else{
+        responseJSON.status = 400;
+        responseJSON.message = "Bad Request";
         res.send(responseJSON);
-    }, getRequester(req.token));
+    }
+
 });
 router.post('/charge', function (req, res, next) {
     //console.log(req);
@@ -49,18 +57,25 @@ router.post('/charge', function (req, res, next) {
         status: 200,
         message: 'OK'
     };
+    if(req.body.stripeEmail && req.body.stripeToken){
+        UserController.createPayment(req, function (err, message) {
+            if (err) {
+                responseJSON.status = 500;
+                responseJSON.message = err;
+            }
+            else {
+                responseJSON.message = message;
+            }
 
-    UserController.createPayment(req, function (err, message) {
-        if (err) {
-            responseJSON.status = 500;
-            responseJSON.message = err;
-        }
-        else {
-            responseJSON.message = message;
-        }
-
+            res.send(responseJSON);
+        });
+    }
+    else{
+        responseJSON.status = 400;
+        responseJSON.message = "Bad Request";
         res.send(responseJSON);
-    });
+    }
+
 
 });
 router.post('/createApplication', function (req, res, next) {
@@ -70,16 +85,24 @@ router.post('/createApplication', function (req, res, next) {
         message: 'OK'
     };
 
-    ApplicationController.createApplication(req.body.userID,req.body.application, function(err, message){
-        if(err){
-            responseJSON.status = 500;
-            responseJSON.message = err;
-        }
-        else{
-            responseJSON.message = message;
-        }
+    if(req.body.userID && req.body.application && req.token){
+        ApplicationController.createApplication(req.body.userID,req.body.application, function(err, message){
+            if(err){
+                responseJSON.status = 500;
+                responseJSON.message = err;
+            }
+            else{
+                responseJSON.message = message;
+            }
+            res.send(responseJSON);
+        },getRequester(req.token));
+
+    }
+    else{
+        responseJSON.status = 400;
+        responseJSON.message = "Bad Request";
         res.send(responseJSON);
-    },getRequester(req.token))
+    }
 
 });
 router.post('/removeApplication', function (req, res, next) {
@@ -89,16 +112,24 @@ router.post('/removeApplication', function (req, res, next) {
         message: 'OK'
     };
 
-    ApplicationController.removeApplication(req.body.appID, function(err, message){
-        if(err){
-            responseJSON.status = 500;
-            responseJSON.message = err;
-        }
-        else{
-            responseJSON.message = message;
-        }
+    if(req.body.appID && req.token){
+        ApplicationController.removeApplication(req.body.appID, function(err, message){
+            if(err){
+                responseJSON.status = 500;
+                responseJSON.message = err;
+            }
+            else{
+                responseJSON.message = message;
+            }
+            res.send(responseJSON);
+        },getRequester(req.token))
+    }
+    else{
+        responseJSON.status = 400;
+        responseJSON.message = "Bad Request";
         res.send(responseJSON);
-    },getRequester(req.token))
+    }
+
 
 });
 router.post('/bulkSignup', function (req, res, next) {
@@ -108,16 +139,23 @@ router.post('/bulkSignup', function (req, res, next) {
         message: 'OK'
     };
 
-    UserController.agentBulkSignup(req.body.applications, function(err, message){
-        if(err){
-            responseJSON.status = 500;
-            responseJSON.message = err;
-        }
-        else{
-            responseJSON.message = message;
-        }
+    if(req.body.applications && req.token){
+        UserController.agentBulkSignup(req.body.applications, function(err, message){
+            if(err){
+                responseJSON.status = 500;
+                responseJSON.message = err;
+            }
+            else{
+                responseJSON.message = message;
+            }
+            res.send(responseJSON);
+        },getRequester(req.token))
+    }
+    else{
+        responseJSON.status = 400;
+        responseJSON.message = "Bad Request";
         res.send(responseJSON);
-    },getRequester(req.token))
+    }
 
 });
 module.exports = router;

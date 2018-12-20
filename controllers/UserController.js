@@ -203,6 +203,7 @@ UserController.agentBulkSignup = function(dataPack, callback, requesterObj){
                                     role: settings.system.regularUserRole,
                                     passwordLastUpdated: Date.now(),
                                     lastUpdated: Date.now(),
+                                    agent: requesterObj.id,
                                     'status.active': !settings.agents.agentClientsMustVerifyEmail
 
                                 }, function (err, user) {
@@ -399,7 +400,7 @@ UserController.loginWithPassword = function (email, password, callback, requeste
                             let token = jwt.sign(tokenJSON, process.env.JWT_SECRET, {
                                 expiresIn: settings.users.authTokenValidLength
                             });
-                            console.log(token)
+                            console.log(token);
                             return callback(null, {token: token});
                         }
                         else {
