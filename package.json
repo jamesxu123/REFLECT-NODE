@@ -19,7 +19,7 @@
     "http-errors": "~1.6.2",
     "jsonwebtoken": "^8.3.0",
     "mongodb-stitch-server-sdk": "^4.0.15-0",
-    "mongoose": "^5.3.4",
+    "mongoose": "^5.4.10",
     "morgan": "~1.9.0",
     "npm": "^6.4.1",
     "stripe": "^6.12.1",
